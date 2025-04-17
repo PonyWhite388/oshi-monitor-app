@@ -1,0 +1,12 @@
+2025-04-17 13:44:18.506  INFO 1896 --- [main] o.a.o.OShiMonitorAppApplication          : Starting OShiMonitorAppApplication using Java 17.0.10 on PonyWhite with PID 1896 (D:\JAVA\oshi-monitor-app\target\classes started by Pony White in D:\JAVA\oshi-monitor-app)
+2025-04-17 13:44:18.508  INFO 1896 --- [main] o.a.o.OShiMonitorAppApplication          : No active profile set, falling back to 1 default profile: "default"
+2025-04-17 13:44:19.223  INFO 1896 --- [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port(s): 9090 (http)
+2025-04-17 13:44:19.232  INFO 1896 --- [main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2025-04-17 13:44:19.232  INFO 1896 --- [main] org.apache.catalina.core.StandardEngine  : Starting Servlet engine: [Apache Tomcat/9.0.83]
+2025-04-17 13:44:19.312  INFO 1896 --- [main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2025-04-17 13:44:19.312  INFO 1896 --- [main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 758 ms
+2025-04-17 13:44:19.841  INFO 1896 --- [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port(s): 9090 (http) with context path ''
+2025-04-17 13:44:19.850  INFO 1896 --- [main] o.a.o.OShiMonitorAppApplication          : Started OShiMonitorAppApplication in 1.949 seconds (JVM running for 2.958)
+2025-04-17 13:45:02.106  INFO 24300 --- [main] o.a.o.OShiMonitorAppApplicationTests     : Starting OShiMonitorAppApplicationTests using Java 17.0.10 on PonyWhite with PID 24300 (started by Pony White in D:\JAVA\oshi-monitor-app)
+2025-04-17 13:45:02.107  INFO 24300 --- [main] o.a.o.OShiMonitorAppApplicationTests     : No active profile set, falling back to 1 default profile: "default"
+2025-04-17 13:45:04.807  INFO 24300 --- [main] o.a.o.OShiMonitorAppApplicationTests     : Started OShiMonitorAppApplicationTests in 3.002 seconds (JVM running for 3.746)
