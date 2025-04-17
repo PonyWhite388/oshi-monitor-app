@@ -79,7 +79,7 @@ public class PortMonitorKillService {
             }
 
             OSProcess oldProc = os.getProcess(pid);
-            Thread.sleep(2000);
+            Thread.sleep(1000);
             OSProcess newProc = os.getProcess(pid);
 
             if (oldProc == null || newProc == null) {

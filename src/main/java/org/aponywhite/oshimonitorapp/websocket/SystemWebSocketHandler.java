@@ -1,7 +1,9 @@
 package org.aponywhite.oshimonitorapp.websocket;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import oshi.software.os.OSProcess;
 import org.aponywhite.oshimonitorapp.service.*;
 import org.aponywhite.oshimonitorapp.service.alert.CpuAlertService;
 import org.slf4j.Logger;
@@ -9,14 +11,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.*;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
-import oshi.software.os.OSProcess;
-import com.fasterxml.jackson.core.type.TypeReference;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.stream.Collectors;
+
+// 省略 package 与 import（跟你之前相同）
 
 @Component
 @RequiredArgsConstructor
@@ -30,12 +31,19 @@ public class SystemWebSocketHandler extends TextWebSocketHandler {
 
     private final ObjectMapper mapper = new ObjectMapper();
     private final Set<WebSocketSession> sessions = new CopyOnWriteArraySet<>();
-    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2);
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(4);
     private final Logger log = LoggerFactory.getLogger(SystemWebSocketHandler.class);
 
     private final Map<String, Boolean> pendingConfirmations = new ConcurrentHashMap<>();
     private final Map<String, Integer> missedHeartbeats = new ConcurrentHashMap<>();
     private final Map<String, Long> lastHeartbeatReply = new ConcurrentHashMap<>();
+
+    private volatile boolean heartbeatStarted = false;
+    private volatile boolean bfrMonitorStarted = false;
+    private volatile boolean processSamplerStarted = false;
+
+    private volatile Map<String, Object> lastBfrData = new HashMap<>();
+    private volatile List<Map<String, Object>> cachedProcessList = new ArrayList<>();
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
@@ -73,18 +81,38 @@ public class SystemWebSocketHandler extends TextWebSocketHandler {
             }
         }, 3, TimeUnit.SECONDS);
 
-        if (sessions.size() == 1) {
-            startBroadcasting();
-            startHeartbeatChecker();
+        if (!heartbeatStarted) {
+            synchronized (this) {
+                if (!heartbeatStarted) {
+                    startBroadcasting();
+                    startHeartbeatChecker();
+                    heartbeatStarted = true;
+                }
+            }
+        }
+
+        if (!bfrMonitorStarted) {
+            synchronized (this) {
+                if (!bfrMonitorStarted) {
+                    startBfrMonitor();
+                    bfrMonitorStarted = true;
+                }
+            }
+        }
+
+        if (!processSamplerStarted) {
+            synchronized (this) {
+                if (!processSamplerStarted) {
+                    startProcessSampler();
+                    processSamplerStarted = true;
+                }
+            }
         }
     }
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
-        Map<String, Object> msg = mapper.readValue(
-                message.getPayload(),
-                new TypeReference<Map<String, Object>>() {}
-        );
+        Map<String, Object> msg = mapper.readValue(message.getPayload(), new TypeReference<Map<String, Object>>() {});
         String type = (String) msg.get("type");
         String sessionId = session.getId();
 
@@ -143,44 +171,50 @@ public class SystemWebSocketHandler extends TextWebSocketHandler {
                 String time = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss"));
 
                 double[] coreLoads = cpuLoadService.getCpuLoad();
-                List<Double> cpuParts = Arrays.stream(coreLoads)
-                        .map(d -> Math.round(d * 10000.0) / 100.0)
-                        .boxed()
-                        .collect(Collectors.toList());
+                List<Double> cpuParts = new ArrayList<>();
+                for (double load : coreLoads) {
+                    cpuParts.add(Math.round(load * 10000.0) / 100.0);
+                }
 
                 double totalCpu = cpuLoadService.getTotalCpuUsagePercent();
                 double[] mem = memoryService.getMemoryUsage();
                 double memUsage = mem[2];
 
-                List<Map<String, Object>> procList = processService.getProcessCpuAndMemory();
+                List<Map<String, Object>> procList = cachedProcessList;
 
-                List<Map<String, Object>> topCpu = procList.stream()
-                        .filter(p -> Double.parseDouble(p.get("cpuUsage").toString()) > 10.0)
-                        .sorted((a, b) -> Double.compare(
-                                Double.parseDouble(b.get("cpuUsage").toString()),
-                                Double.parseDouble(a.get("cpuUsage").toString())
-                        ))
-                        .limit(10)
-                        .map(p -> {
-                            Map<String, Object> item = new HashMap<>();
-                            item.put("process", p.get("name"));
-                            item.put("value", p.get("cpuUsage"));
-                            return item;
-                        }).collect(Collectors.toList());
+                List<Map<String, Object>> topCpu = new ArrayList<>();
+                List<Map<String, Object>> topMem = new ArrayList<>();
 
-                List<Map<String, Object>> topMem = procList.stream()
-                        .filter(p -> Double.parseDouble(p.get("memoryMB").toString()) > 10)
-                        .sorted((a, b) -> Double.compare(
-                                Double.parseDouble(b.get("memoryMB").toString()),
-                                Double.parseDouble(a.get("memoryMB").toString())
-                        ))
-                        .limit(10)
-                        .map(p -> {
-                            Map<String, Object> item = new HashMap<>();
-                            item.put("process", p.get("name"));
-                            item.put("value", p.get("memoryMB"));
-                            return item;
-                        }).collect(Collectors.toList());
+                for (Map<String, Object> p : procList) {
+                    double cpuVal = Double.parseDouble(p.get("cpuUsage").toString());
+                    double memVal = Double.parseDouble(p.get("memoryMB").toString());
+
+                    if (cpuVal > 10.0) {
+                        Map<String, Object> item = new HashMap<>();
+                        item.put("process", p.get("name"));
+                        item.put("value", p.get("cpuUsage"));
+                        topCpu.add(item);
+                    }
+
+                    if (memVal > 10.0) {
+                        Map<String, Object> item = new HashMap<>();
+                        item.put("process", p.get("name"));
+                        item.put("value", p.get("memoryMB"));
+                        topMem.add(item);
+                    }
+                }
+
+                topCpu.sort((a, b) -> Double.compare(
+                        Double.parseDouble(b.get("value").toString()),
+                        Double.parseDouble(a.get("value").toString()))
+                );
+                if (topCpu.size() > 10) topCpu = topCpu.subList(0, 10);
+
+                topMem.sort((a, b) -> Double.compare(
+                        Double.parseDouble(b.get("value").toString()),
+                        Double.parseDouble(a.get("value").toString()))
+                );
+                if (topMem.size() > 10) topMem = topMem.subList(0, 10);
 
                 Map<String, Object> cpuMap = new HashMap<>();
                 cpuMap.put("CPU_usage", String.format("%.0f", totalCpu));
@@ -195,28 +229,7 @@ public class SystemWebSocketHandler extends TextWebSocketHandler {
                 dataMap.put("time", time);
                 dataMap.put("CPU", cpuMap);
                 dataMap.put("Memory", memMap);
-
-                Map<String, Object> bfrMap = new HashMap<>();
-                try {
-                    Integer bfrPid = portMonitorKillService.getPidByPort(10011);
-                    if (bfrPid != null) {
-                        OSProcess oldProc = portMonitorKillService.getProcessByPid(bfrPid);
-                        Thread.sleep(1000);
-                        OSProcess newProc = portMonitorKillService.getProcessByPid(bfrPid);
-
-                        if (oldProc != null && newProc != null) {
-                            double bfrCpu = newProc.getProcessCpuLoadBetweenTicks(oldProc) * 100;
-                            double bfrMem = newProc.getResidentSetSize() / 1024.0 / 1024.0;
-                            bfrMap.put("BFR_CPU", String.format("%.0f", bfrCpu));
-                            bfrMap.put("BFR_Memory", String.format("%.0f", bfrMem));
-                        }
-                    }
-                } catch (Exception e) {
-                    log.error("采集 BFR 程序资源失败", e);
-                    bfrMap.put("BFR_CPU", "0");
-                    bfrMap.put("BFR_Memory", "0");
-                }
-                dataMap.put("BFR", bfrMap);
+                dataMap.put("BFR", lastBfrData);
 
                 Map<String, Object> message = new HashMap<>();
                 message.put("type", "update");
@@ -252,4 +265,47 @@ public class SystemWebSocketHandler extends TextWebSocketHandler {
             }
         }, 0, 2, TimeUnit.SECONDS);
     }
+
+    private void startBfrMonitor() {
+        scheduler.scheduleAtFixedRate(() -> {
+            try {
+                Integer bfrPid = portMonitorKillService.getPidByPort(10011);
+                if (bfrPid != null) {
+                    OSProcess oldProc = portMonitorKillService.getProcessByPid(bfrPid);
+                    Thread.sleep(1000);
+                    OSProcess newProc = portMonitorKillService.getProcessByPid(bfrPid);
+
+                    if (oldProc != null && newProc != null) {
+                        double bfrCpu = newProc.getProcessCpuLoadBetweenTicks(oldProc) * 100;
+                        double bfrMem = newProc.getResidentSetSize() / 1024.0 / 1024.0;
+
+                        Map<String, Object> bfrMap = new HashMap<>();
+                        bfrMap.put("BFR_CPU", String.format("%.0f", bfrCpu));
+                        bfrMap.put("BFR_Memory", String.format("%.0f", bfrMem));
+                        lastBfrData = bfrMap;
+                    }
+                }
+            } catch (Exception e) {
+                log.error("采集 BFR 程序资源失败", e);
+                Map<String, Object> fallback = new HashMap<>();
+                fallback.put("BFR_CPU", "0");
+                fallback.put("BFR_Memory", "0");
+                lastBfrData = fallback;
+            }
+        }, 0, 2, TimeUnit.SECONDS);
+    }
+
+    private void startProcessSampler() {
+        scheduler.scheduleAtFixedRate(() -> {
+            try {
+                List<Map<String, Object>> sample = processService.getProcessCpuAndMemory();
+                if (sample != null) {
+                    cachedProcessList = sample;
+                }
+            } catch (Exception e) {
+                log.error("进程采样失败", e);
+            }
+        }, 0, 2, TimeUnit.SECONDS);
+    }
 }
+

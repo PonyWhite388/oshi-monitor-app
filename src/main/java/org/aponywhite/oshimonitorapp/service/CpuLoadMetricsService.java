@@ -14,7 +14,7 @@ public class CpuLoadMetricsService {
 
         CentralProcessor processor = hal.getProcessor();
 
-        double[] CpuLoad = processor.getProcessorCpuLoad(3000);
+        double[] CpuLoad = processor.getProcessorCpuLoad(1500);
 
         return CpuLoad;
     }
@@ -25,7 +25,7 @@ public class CpuLoadMetricsService {
 
         long[] prevTicks = processor.getSystemCpuLoadTicks();
         try {
-            Thread.sleep(2500); // 等 2.5 秒获取平均负载
+            Thread.sleep(1500); // 等 1 秒获取平均负载
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
