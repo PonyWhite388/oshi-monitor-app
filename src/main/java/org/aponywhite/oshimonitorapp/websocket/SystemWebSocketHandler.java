@@ -10,10 +10,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.*;
-
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
-import javax.annotation.PostConstruct;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -38,16 +36,10 @@ public class SystemWebSocketHandler extends TextWebSocketHandler {
     private final Map<String, Boolean> confirmedConnections = new ConcurrentHashMap<>();
 
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(4);
+    private volatile boolean schedulersStarted = false;
 
     private volatile List<Map<String, Object>> cachedProcessList = new ArrayList<>();
     private volatile Map<String, Object> lastBfrData = new HashMap<>();
-
-    @PostConstruct
-    public void init() {
-        schedule(this::sendUpdates, 0, 2);
-        schedule(this::checkHeartbeats, 0, 3);
-        schedule(this::sampleProcessList, 0, 2);
-    }
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
@@ -70,6 +62,18 @@ public class SystemWebSocketHandler extends TextWebSocketHandler {
             }
         }, 3, TimeUnit.SECONDS);
 
+        // 懒加载调度任务（首次连接触发）
+        startSchedulersOnce();
+    }
+
+    private void startSchedulersOnce() {
+        if (!schedulersStarted) {
+            schedule(this::sendUpdates, 0, 2);
+            schedule(this::checkHeartbeats, 0, 3);
+            schedule(this::sampleProcessList, 0, 2);
+            schedulersStarted = true;
+            log.info(" 定时任务已启动（首次连接）");
+        }
     }
 
     @Override
@@ -108,7 +112,6 @@ public class SystemWebSocketHandler extends TextWebSocketHandler {
 
         cpuAlertService.checkCpuAlert()
                 .ifPresent(alert -> sendToAll(message("alarm", "success", alert)));
-
     }
 
     private Map<String, Object> collectCpuInfo() {
@@ -122,7 +125,7 @@ public class SystemWebSocketHandler extends TextWebSocketHandler {
 
         List<Map<String, Object>> top = cachedProcessList.stream()
                 .filter(p -> Double.parseDouble(p.get("cpuUsage").toString()) > 10)
-                .sorted( new Comparator<Map<String, Object>>() {
+                .sorted(new Comparator<Map<String, Object>>() {
                     public int compare(Map<String, Object> a, Map<String, Object> b) {
                         return Double.compare(
                                 Double.parseDouble(b.get("cpuUsage").toString()),
@@ -249,7 +252,6 @@ public class SystemWebSocketHandler extends TextWebSocketHandler {
                 log.error("定时任务异常", e);
             }
         }, delay, period, TimeUnit.SECONDS);
-
     }
 
     private Map<String, Object> message(String type, String msg) {
