@@ -9,5 +9,7 @@ org\aponywhite\oshimonitorapp\service\CpuLoadMetricsService.class
 org\aponywhite\oshimonitorapp\OShiMonitorAppApplication.class
 org\aponywhite\oshimonitorapp\service\DiskInfoService.class
 org\aponywhite\oshimonitorapp\service\ProcessMetricsService.class
+org\aponywhite\oshimonitorapp\websocket\SystemWebSocketHandler$3.class
 org\aponywhite\oshimonitorapp\controller\CpuLoadController.class
+org\aponywhite\oshimonitorapp\websocket\SystemWebSocketHandler$2.class
 org\aponywhite\oshimonitorapp\websocket\WebSocketConfig.class

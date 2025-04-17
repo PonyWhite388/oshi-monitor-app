@@ -72,7 +72,7 @@ public class SystemWebSocketHandler extends TextWebSocketHandler {
             schedule(this::checkHeartbeats, 0, 3);
             schedule(this::sampleProcessList, 0, 2);
             schedulersStarted = true;
-            log.info(" 定时任务已启动:首次连接");
+            log.info("定时任务已启动:首次连接");
         }
     }
 

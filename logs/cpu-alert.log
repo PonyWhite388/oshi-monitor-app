@@ -914,3 +914,55 @@ Identify and stop the process that's listening on port 9090 or configure this ap
 2025-04-18 02:39:22.877  INFO 33796 --- [main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 669 ms
 2025-04-18 02:39:23.350  INFO 33796 --- [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port(s): 9091 (http) with context path ''
 2025-04-18 02:39:23.359  INFO 33796 --- [main] o.a.o.OShiMonitorAppApplication          : Started OShiMonitorAppApplication in 1.47 seconds (JVM running for 1.981)
+2025-04-18 02:47:52.764  INFO 17644 --- [main] o.a.o.OShiMonitorAppApplicationTests     : Starting OShiMonitorAppApplicationTests using Java 17.0.10 on PonyWhite with PID 17644 (started by Pony White in D:\JAVA\oshi-monitor-app)
+2025-04-18 02:47:52.765  INFO 17644 --- [main] o.a.o.OShiMonitorAppApplicationTests     : No active profile set, falling back to 1 default profile: "default"
+2025-04-18 02:47:54.908  INFO 17644 --- [main] o.a.o.OShiMonitorAppApplicationTests     : Started OShiMonitorAppApplicationTests in 2.467 seconds (JVM running for 3.167)
+2025-04-18 02:51:43.860  INFO 51108 --- [main] o.a.o.OShiMonitorAppApplication          : Starting OShiMonitorAppApplication using Java 17.0.10 on PonyWhite with PID 51108 (D:\JAVA\oshi-monitor-app\target\classes started by Pony White in D:\JAVA\oshi-monitor-app)
+2025-04-18 02:51:43.864  INFO 51108 --- [main] o.a.o.OShiMonitorAppApplication          : No active profile set, falling back to 1 default profile: "default"
+2025-04-18 02:51:44.883  INFO 51108 --- [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port(s): 9091 (http)
+2025-04-18 02:51:44.895  INFO 51108 --- [main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2025-04-18 02:51:44.896  INFO 51108 --- [main] org.apache.catalina.core.StandardEngine  : Starting Servlet engine: [Apache Tomcat/9.0.83]
+2025-04-18 02:51:44.985  INFO 51108 --- [main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2025-04-18 02:51:44.985  INFO 51108 --- [main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 1081 ms
+2025-04-18 02:51:45.638  INFO 51108 --- [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port(s): 9091 (http) with context path ''
+2025-04-18 02:51:45.650  INFO 51108 --- [main] o.a.o.OShiMonitorAppApplication          : Started OShiMonitorAppApplication in 2.128 seconds (JVM running for 2.766)
+2025-04-18 02:51:48.341  INFO 51108 --- [http-nio-9091-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2025-04-18 02:51:48.342  INFO 51108 --- [http-nio-9091-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2025-04-18 02:51:48.343  INFO 51108 --- [http-nio-9091-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
+2025-04-18 02:51:48.410  INFO 51108 --- [http-nio-9091-exec-1] o.a.o.service.alert.CpuAlertService      : 服务启动成功，系统监控已就绪。
+2025-04-18 02:51:52.602  INFO 51108 --- [pool-2-thread-1] o.a.o.service.alert.CpuAlertService      : 当前 CPU 正常，使用率：3.51%
+2025-04-18 02:51:56.652  INFO 51108 --- [pool-2-thread-1] o.a.o.service.alert.CpuAlertService      : 当前 CPU 正常，使用率：4.14%
+2025-04-18 02:52:00.704  INFO 51108 --- [pool-2-thread-1] o.a.o.service.alert.CpuAlertService      : 当前 CPU 正常，使用率：3.60%
+2025-04-18 02:52:04.798  INFO 51108 --- [pool-2-thread-1] o.a.o.service.alert.CpuAlertService      : 当前 CPU 正常，使用率：2.98%
+2025-04-18 02:52:08.844  INFO 51108 --- [pool-2-thread-1] o.a.o.service.alert.CpuAlertService      : 当前 CPU 正常，使用率：8.21%
+2025-04-18 02:52:12.896  INFO 51108 --- [pool-2-thread-1] o.a.o.service.alert.CpuAlertService      : 当前 CPU 正常，使用率：6.14%
+2025-04-18 02:52:16.941  INFO 51108 --- [pool-2-thread-1] o.a.o.service.alert.CpuAlertService      : 当前 CPU 正常，使用率：6.05%
+2025-04-18 02:52:30.553  INFO 66300 --- [main] o.a.o.OShiMonitorAppApplication          : Starting OShiMonitorAppApplication using Java 17.0.10 on PonyWhite with PID 66300 (D:\JAVA\oshi-monitor-app\target\classes started by Pony White in D:\JAVA\oshi-monitor-app)
+2025-04-18 02:52:30.557  INFO 66300 --- [main] o.a.o.OShiMonitorAppApplication          : No active profile set, falling back to 1 default profile: "default"
+2025-04-18 02:52:31.770  INFO 66300 --- [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port(s): 9091 (http)
+2025-04-18 02:52:31.779  INFO 66300 --- [main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2025-04-18 02:52:31.779  INFO 66300 --- [main] org.apache.catalina.core.StandardEngine  : Starting Servlet engine: [Apache Tomcat/9.0.83]
+2025-04-18 02:52:31.850  INFO 66300 --- [main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2025-04-18 02:52:31.851  INFO 66300 --- [main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 1238 ms
+2025-04-18 02:52:32.334  INFO 66300 --- [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port(s): 9091 (http) with context path ''
+2025-04-18 02:52:32.344  INFO 66300 --- [main] o.a.o.OShiMonitorAppApplication          : Started OShiMonitorAppApplication in 2.217 seconds (JVM running for 2.866)
+2025-04-18 02:52:40.649  INFO 66300 --- [http-nio-9091-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2025-04-18 02:52:40.649  INFO 66300 --- [http-nio-9091-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2025-04-18 02:52:40.649  INFO 66300 --- [http-nio-9091-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 0 ms
+2025-04-18 02:52:40.711  INFO 66300 --- [http-nio-9091-exec-1] o.a.o.service.alert.CpuAlertService      : 服务启动成功，系统监控已就绪。
+2025-04-18 02:52:40.713  INFO 66300 --- [http-nio-9091-exec-1] o.a.o.websocket.SystemWebSocketHandler   :  定时任务已启动:首次连接
+2025-04-18 02:52:44.888  INFO 66300 --- [pool-2-thread-1] o.a.o.service.alert.CpuAlertService      : 当前 CPU 正常，使用率：3.56%
+2025-04-18 02:52:48.941  INFO 66300 --- [pool-2-thread-1] o.a.o.service.alert.CpuAlertService      : 当前 CPU 正常，使用率：8.45%
+2025-04-18 02:52:52.998  INFO 66300 --- [pool-2-thread-1] o.a.o.service.alert.CpuAlertService      : 当前 CPU 正常，使用率：3.46%
+2025-04-18 02:52:57.048  INFO 66300 --- [pool-2-thread-1] o.a.o.service.alert.CpuAlertService      : 当前 CPU 正常，使用率：3.02%
+2025-04-18 02:53:01.089  INFO 66300 --- [pool-2-thread-1] o.a.o.service.alert.CpuAlertService      : 当前 CPU 正常，使用率：3.71%
+2025-04-18 02:53:05.149  INFO 66300 --- [pool-2-thread-1] o.a.o.service.alert.CpuAlertService      : 当前 CPU 正常，使用率：5.56%
+2025-04-18 02:53:09.193  INFO 66300 --- [pool-2-thread-1] o.a.o.service.alert.CpuAlertService      : 当前 CPU 正常，使用率：5.79%
+2025-04-18 02:53:13.246  INFO 66300 --- [pool-2-thread-2] o.a.o.service.alert.CpuAlertService      : 当前 CPU 正常，使用率：7.52%
+2025-04-18 02:53:17.311  INFO 66300 --- [pool-2-thread-2] o.a.o.service.alert.CpuAlertService      : 当前 CPU 正常，使用率：3.30%
+2025-04-18 02:53:21.357  INFO 66300 --- [pool-2-thread-2] o.a.o.service.alert.CpuAlertService      : 当前 CPU 正常，使用率：3.90%
+2025-04-18 02:53:25.418  INFO 66300 --- [pool-2-thread-2] o.a.o.service.alert.CpuAlertService      : 当前 CPU 正常，使用率：2.96%
+2025-04-18 02:53:29.477  INFO 66300 --- [pool-2-thread-2] o.a.o.service.alert.CpuAlertService      : 当前 CPU 正常，使用率：2.59%
+2025-04-18 02:53:33.519  INFO 66300 --- [pool-2-thread-2] o.a.o.service.alert.CpuAlertService      : 当前 CPU 正常，使用率：2.69%
+2025-04-18 02:53:37.570  INFO 66300 --- [pool-2-thread-2] o.a.o.service.alert.CpuAlertService      : 当前 CPU 正常，使用率：6.06%
+2025-04-18 02:53:41.607  INFO 66300 --- [pool-2-thread-2] o.a.o.service.alert.CpuAlertService      : 当前 CPU 正常，使用率：5.46%
