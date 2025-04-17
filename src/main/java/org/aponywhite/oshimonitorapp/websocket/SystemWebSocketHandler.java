@@ -2,8 +2,6 @@ package org.aponywhite.oshimonitorapp.websocket;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
-import oshi.SystemInfo;
-import oshi.hardware.CentralProcessor;
 import org.aponywhite.oshimonitorapp.service.*;
 import org.aponywhite.oshimonitorapp.service.alert.CpuAlertService;
 import org.slf4j.Logger;
@@ -12,6 +10,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.socket.*;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 import oshi.software.os.OSProcess;
+import com.fasterxml.jackson.core.type.TypeReference;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -82,7 +81,10 @@ public class SystemWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
-        Map<String, Object> msg = mapper.readValue(message.getPayload(), Map.class);
+        Map<String, Object> msg = mapper.readValue(
+                message.getPayload(),
+                new TypeReference<Map<String, Object>>() {}
+        );
         String type = (String) msg.get("type");
         String sessionId = session.getId();
 

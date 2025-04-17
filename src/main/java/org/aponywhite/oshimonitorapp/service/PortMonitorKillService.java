@@ -37,18 +37,34 @@ public class PortMonitorKillService {
 
     public Integer getPidByPort(int port) {
         try {
-            String cmd = "bash -c \"netstat -nlp | grep :" + port + " | awk '{print $7}' | cut -d'/' -f1\"";
+            String os = System.getProperty("os.name").toLowerCase();
+            String cmd;
+
+            if (os.contains("win")) {
+                cmd = "cmd.exe /c netstat -ano | findstr :" + port;
+            } else {
+                cmd = "bash -c \"netstat -nlp | grep :" + port + " | awk '{print $7}' | cut -d'/' -f1\"";
+            }
+
             Process process = Runtime.getRuntime().exec(cmd);
             BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            String pidStr = reader.readLine();
-            if (pidStr != null && !pidStr.trim().isEmpty()) {
-                return Integer.parseInt(pidStr.trim());
+            String line = reader.readLine();
+
+            if (line != null && !line.trim().isEmpty()) {
+                if (os.contains("win")) {
+                    String[] parts = line.trim().split("\\s+");
+                    return Integer.parseInt(parts[parts.length - 1]);
+                } else {
+                    return Integer.parseInt(line.trim());
+                }
             }
+
         } catch (Exception e) {
             log.error("无法获取 PID: {}", e.getMessage());
         }
         return null;
     }
+
 
     public OSProcess getProcessByPid(int pid) {
         return os.getProcess(pid);
