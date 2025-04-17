@@ -10,104 +10,66 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.*;
+
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
+import javax.annotation.PostConstruct;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.*;
-
-// 省略 package 与 import（跟你之前相同）
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
 public class SystemWebSocketHandler extends TextWebSocketHandler {
 
-    private final ProcessMetricsService processService;
-    private final CpuLoadMetricsService cpuLoadService;
+    private final ObjectMapper mapper;
+    private final CpuLoadMetricsService cpuService;
     private final MemoryLoadMetricsService memoryService;
+    private final ProcessMetricsService processService;
+    private final PortMonitorKillService portService;
     private final CpuAlertService cpuAlertService;
-    private final PortMonitorKillService portMonitorKillService;
 
-    private final ObjectMapper mapper = new ObjectMapper();
-    private final Set<WebSocketSession> sessions = new CopyOnWriteArraySet<>();
-    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(4);
     private final Logger log = LoggerFactory.getLogger(SystemWebSocketHandler.class);
 
-    private final Map<String, Boolean> pendingConfirmations = new ConcurrentHashMap<>();
-    private final Map<String, Integer> missedHeartbeats = new ConcurrentHashMap<>();
-    private final Map<String, Long> lastHeartbeatReply = new ConcurrentHashMap<>();
+    private final Set<WebSocketSession> sessions = new CopyOnWriteArraySet<>();
+    private final Map<String, Long> heartbeats = new ConcurrentHashMap<>();
+    private final Map<String, Boolean> confirmedConnections = new ConcurrentHashMap<>();
 
-    private volatile boolean heartbeatStarted = false;
-    private volatile boolean bfrMonitorStarted = false;
-    private volatile boolean processSamplerStarted = false;
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(4);
 
-    private volatile Map<String, Object> lastBfrData = new HashMap<>();
     private volatile List<Map<String, Object>> cachedProcessList = new ArrayList<>();
+    private volatile Map<String, Object> lastBfrData = new HashMap<>();
+
+    @PostConstruct
+    public void init() {
+        schedule(this::sendUpdates, 0, 2);
+        schedule(this::checkHeartbeats, 0, 3);
+        schedule(this::sampleProcessList, 0, 2);
+    }
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
-        sessions.add(session);
         String sessionId = session.getId();
-        pendingConfirmations.put(sessionId, false);
-        missedHeartbeats.put(sessionId, 0);
-        lastHeartbeatReply.put(sessionId, System.currentTimeMillis());
+        sessions.add(session);
+        heartbeats.put(sessionId, System.currentTimeMillis());
+        confirmedConnections.put(sessionId, false);
 
-        try {
-            Map<String, Object> confirm = new HashMap<>();
-            confirm.put("type", "creat");
-            confirm.put("message", "success");
-            session.sendMessage(new TextMessage(mapper.writeValueAsString(confirm)));
-
-            Map<String, Object> alarmMsg = new HashMap<>();
-            alarmMsg.put("type", "alarm");
-            alarmMsg.put("message", "success");
-            alarmMsg.put("data", cpuAlertService.startupSuccessMessage());
-            session.sendMessage(new TextMessage(mapper.writeValueAsString(alarmMsg)));
-        } catch (Exception e) {
-            log.error("初始化连接失败", e);
-        }
+        send(session, message("creat", "success"));
+        send(session, message("alarm", "success", cpuAlertService.startupSuccessMessage()));
 
         scheduler.schedule(() -> {
-            if (!Boolean.TRUE.equals(pendingConfirmations.get(sessionId))) {
+            if (!confirmedConnections.getOrDefault(sessionId, false)) {
+                send(session, message("error", "未确认连接"));
                 try {
-                    Map<String, Object> error = new HashMap<>();
-                    error.put("type", "error");
-                    error.put("message", "success");
-                    session.sendMessage(new TextMessage(mapper.writeValueAsString(error)));
+                    session.close(CloseStatus.PROTOCOL_ERROR);
                 } catch (Exception e) {
-                    log.error("发送 error 消息失败", e);
+                    log.warn("关闭未确认连接失败：{}", e.getMessage());
                 }
             }
         }, 3, TimeUnit.SECONDS);
 
-        if (!heartbeatStarted) {
-            synchronized (this) {
-                if (!heartbeatStarted) {
-                    startBroadcasting();
-                    startHeartbeatChecker();
-                    heartbeatStarted = true;
-                }
-            }
-        }
-
-        if (!bfrMonitorStarted) {
-            synchronized (this) {
-                if (!bfrMonitorStarted) {
-                    startBfrMonitor();
-                    bfrMonitorStarted = true;
-                }
-            }
-        }
-
-        if (!processSamplerStarted) {
-            synchronized (this) {
-                if (!processSamplerStarted) {
-                    startProcessSampler();
-                    processSamplerStarted = true;
-                }
-            }
-        }
     }
 
     @Override
@@ -117,10 +79,9 @@ public class SystemWebSocketHandler extends TextWebSocketHandler {
         String sessionId = session.getId();
 
         if ("creat".equalsIgnoreCase(type)) {
-            pendingConfirmations.put(sessionId, true);
+            confirmedConnections.put(sessionId, true);
         } else if ("heartbeat".equalsIgnoreCase(type)) {
-            missedHeartbeats.put(sessionId, 0);
-            lastHeartbeatReply.put(sessionId, System.currentTimeMillis());
+            heartbeats.put(sessionId, System.currentTimeMillis());
         }
     }
 
@@ -128,184 +89,179 @@ public class SystemWebSocketHandler extends TextWebSocketHandler {
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
         String sessionId = session.getId();
         sessions.remove(session);
-        pendingConfirmations.remove(sessionId);
-        missedHeartbeats.remove(sessionId);
-        lastHeartbeatReply.remove(sessionId);
+        heartbeats.remove(sessionId);
+        confirmedConnections.remove(sessionId);
     }
 
-    private void startHeartbeatChecker() {
-        scheduler.scheduleAtFixedRate(() -> {
-            for (WebSocketSession session : sessions) {
-                if (!session.isOpen()) continue;
+    private void sendUpdates() {
+        Map<String, Object> cpu = collectCpuInfo();
+        Map<String, Object> mem = collectMemInfo();
+        Map<String, Object> bfr = lastBfrData;
 
-                String sessionId = session.getId();
-                int missed = missedHeartbeats.getOrDefault(sessionId, 0);
-                long lastReply = lastHeartbeatReply.getOrDefault(sessionId, 0L);
-                long now = System.currentTimeMillis();
+        Map<String, Object> dataMap = new HashMap<>();
+        dataMap.put("time", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss")));
+        dataMap.put("CPU", cpu);
+        dataMap.put("Memory", mem);
+        dataMap.put("BFR", bfr);
 
-                if (now - lastReply > 10000 || missed >= 3) {
-                    try {
-                        session.close(CloseStatus.PROTOCOL_ERROR);
-                    } catch (Exception e) {
-                        log.error("强制关闭失败", e);
+        sendToAll(message("update", "success", dataMap));
+
+        cpuAlertService.checkCpuAlert()
+                .ifPresent(alert -> sendToAll(message("alarm", "success", alert)));
+
+    }
+
+    private Map<String, Object> collectCpuInfo() {
+        double[] cores = cpuService.getCpuLoad();
+        double total = cpuService.getTotalCpuUsagePercent();
+
+        List<Double> parts = new ArrayList<>();
+        for (double core : cores) {
+            parts.add(Math.round(core * 10000.0) / 100.0);
+        }
+
+        List<Map<String, Object>> top = cachedProcessList.stream()
+                .filter(p -> Double.parseDouble(p.get("cpuUsage").toString()) > 10)
+                .sorted( new Comparator<Map<String, Object>>() {
+                    public int compare(Map<String, Object> a, Map<String, Object> b) {
+                        return Double.compare(
+                                Double.parseDouble(b.get("cpuUsage").toString()),
+                                Double.parseDouble(a.get("cpuUsage").toString()));
                     }
-                    continue;
-                }
+                })
+                .limit(10)
+                .map(p -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("process", p.get("name"));
+                    m.put("value", p.get("cpuUsage"));
+                    return m;
+                })
+                .collect(Collectors.toList());
 
+        Map<String, Object> cpuMap = new HashMap<>();
+        cpuMap.put("CPU_usage", (int) total);
+        cpuMap.put("CPU_part", parts);
+        cpuMap.put("CPU_list", top);
+        return cpuMap;
+    }
+
+    private Map<String, Object> collectMemInfo() {
+        double[] mem = memoryService.getMemoryUsage();
+        double percent = mem[2];
+
+        List<Map<String, Object>> top = cachedProcessList.stream()
+                .filter(p -> Double.parseDouble(p.get("memoryMB").toString()) > 10)
+                .sorted(new Comparator<Map<String, Object>>() {
+                    public int compare(Map<String, Object> a, Map<String, Object> b) {
+                        return Double.compare(
+                                Double.parseDouble(b.get("memoryMB").toString()),
+                                Double.parseDouble(a.get("memoryMB").toString()));
+                    }
+                })
+                .limit(10)
+                .map(p -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("process", p.get("name"));
+                    m.put("value", p.get("memoryMB"));
+                    return m;
+                })
+                .collect(Collectors.toList());
+
+        Map<String, Object> memMap = new HashMap<>();
+        memMap.put("Memory_usage", (int) percent);
+        memMap.put("Memory_list", top);
+        return memMap;
+    }
+
+    private void sampleProcessList() {
+        try {
+            cachedProcessList = processService.getProcessCpuAndMemory();
+
+            Integer pid = portService.getPidByPort(10011);
+            if (pid != null) {
+                OSProcess oldProc = portService.getProcessByPid(pid);
+                Thread.sleep(1000);
+                OSProcess newProc = portService.getProcessByPid(pid);
+
+                Map<String, Object> bfr = new HashMap<>();
+                bfr.put("BFR_CPU", String.format("%.0f", newProc.getProcessCpuLoadBetweenTicks(oldProc) * 100));
+                bfr.put("BFR_Memory", String.format("%.0f", newProc.getResidentSetSize() / 1024.0 / 1024.0));
+                lastBfrData = bfr;
+            }
+        } catch (Exception e) {
+            Map<String, Object> fallback = new HashMap<>();
+            fallback.put("BFR_CPU", "0");
+            fallback.put("BFR_Memory", "0");
+            lastBfrData = fallback;
+        }
+    }
+
+    private void checkHeartbeats() {
+        long now = System.currentTimeMillis();
+        for (WebSocketSession session : sessions) {
+            String sessionId = session.getId();
+            long last = heartbeats.getOrDefault(sessionId, 0L);
+
+            if (now - last > 10000) {
                 try {
-                    Map<String, Object> beat = new HashMap<>();
-                    beat.put("type", "heartbeat");
-                    beat.put("message", "success");
-                    session.sendMessage(new TextMessage(mapper.writeValueAsString(beat)));
-                    missedHeartbeats.put(sessionId, missed + 1);
-                } catch (Exception e) {
-                    log.error("Heartbeat 发送失败", e);
-                }
+                    session.close(CloseStatus.PROTOCOL_ERROR);
+                } catch (Exception ignored) {}
+                sessions.remove(session);
+                heartbeats.remove(sessionId);
+                confirmedConnections.remove(sessionId);
+            } else {
+                send(session, message("heartbeat", "success"));
             }
-        }, 0, 3, TimeUnit.SECONDS);
+        }
     }
 
-    private void startBroadcasting() {
-        scheduler.scheduleAtFixedRate(() -> {
-            try {
-                String time = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss"));
+    private void sendToAll(Map<String, Object> msg) {
+        String json;
+        try {
+            json = mapper.writeValueAsString(msg);
+        } catch (Exception e) {
+            log.error("序列化失败", e);
+            return;
+        }
 
-                double[] coreLoads = cpuLoadService.getCpuLoad();
-                List<Double> cpuParts = new ArrayList<>();
-                for (double load : coreLoads) {
-                    cpuParts.add(Math.round(load * 10000.0) / 100.0);
-                }
-
-                double totalCpu = cpuLoadService.getTotalCpuUsagePercent();
-                double[] mem = memoryService.getMemoryUsage();
-                double memUsage = mem[2];
-
-                List<Map<String, Object>> procList = cachedProcessList;
-
-                List<Map<String, Object>> topCpu = new ArrayList<>();
-                List<Map<String, Object>> topMem = new ArrayList<>();
-
-                for (Map<String, Object> p : procList) {
-                    double cpuVal = Double.parseDouble(p.get("cpuUsage").toString());
-                    double memVal = Double.parseDouble(p.get("memoryMB").toString());
-
-                    if (cpuVal > 10.0) {
-                        Map<String, Object> item = new HashMap<>();
-                        item.put("process", p.get("name"));
-                        item.put("value", p.get("cpuUsage"));
-                        topCpu.add(item);
-                    }
-
-                    if (memVal > 10.0) {
-                        Map<String, Object> item = new HashMap<>();
-                        item.put("process", p.get("name"));
-                        item.put("value", p.get("memoryMB"));
-                        topMem.add(item);
-                    }
-                }
-
-                topCpu.sort((a, b) -> Double.compare(
-                        Double.parseDouble(b.get("value").toString()),
-                        Double.parseDouble(a.get("value").toString()))
-                );
-                if (topCpu.size() > 10) topCpu = topCpu.subList(0, 10);
-
-                topMem.sort((a, b) -> Double.compare(
-                        Double.parseDouble(b.get("value").toString()),
-                        Double.parseDouble(a.get("value").toString()))
-                );
-                if (topMem.size() > 10) topMem = topMem.subList(0, 10);
-
-                Map<String, Object> cpuMap = new HashMap<>();
-                cpuMap.put("CPU_usage", String.format("%.0f", totalCpu));
-                cpuMap.put("CPU_part", cpuParts);
-                cpuMap.put("CPU_list", topCpu);
-
-                Map<String, Object> memMap = new HashMap<>();
-                memMap.put("Memory_usage", String.format("%.0f", memUsage));
-                memMap.put("Memory_list", topMem);
-
-                Map<String, Object> dataMap = new HashMap<>();
-                dataMap.put("time", time);
-                dataMap.put("CPU", cpuMap);
-                dataMap.put("Memory", memMap);
-                dataMap.put("BFR", lastBfrData);
-
-                Map<String, Object> message = new HashMap<>();
-                message.put("type", "update");
-                message.put("message", "success");
-                message.put("data", dataMap);
-
-                String json = mapper.writeValueAsString(message);
-                for (WebSocketSession session : sessions) {
-                    if (session.isOpen()) {
-                        session.sendMessage(new TextMessage(json));
-                    }
-                }
-
-                cpuAlertService.checkCpuAlert().ifPresent(alert -> {
-                    try {
-                        Map<String, Object> alarmMsg = new HashMap<>();
-                        alarmMsg.put("type", "alarm");
-                        alarmMsg.put("message", "success");
-                        alarmMsg.put("data", alert);
-                        String alarmJson = mapper.writeValueAsString(alarmMsg);
-                        for (WebSocketSession session : sessions) {
-                            if (session.isOpen()) {
-                                session.sendMessage(new TextMessage(alarmJson));
-                            }
-                        }
-                    } catch (Exception e) {
-                        log.error("告警推送失败", e);
-                    }
-                });
-
-            } catch (Exception e) {
-                log.error("WebSocket 推送异常", e);
+        for (WebSocketSession session : sessions) {
+            if (session.isOpen()) {
+                try {
+                    session.sendMessage(new TextMessage(json));
+                } catch (Exception ignored) {}
             }
-        }, 0, 2, TimeUnit.SECONDS);
+        }
     }
 
-    private void startBfrMonitor() {
-        scheduler.scheduleAtFixedRate(() -> {
-            try {
-                Integer bfrPid = portMonitorKillService.getPidByPort(10011);
-                if (bfrPid != null) {
-                    OSProcess oldProc = portMonitorKillService.getProcessByPid(bfrPid);
-                    Thread.sleep(1000);
-                    OSProcess newProc = portMonitorKillService.getProcessByPid(bfrPid);
-
-                    if (oldProc != null && newProc != null) {
-                        double bfrCpu = newProc.getProcessCpuLoadBetweenTicks(oldProc) * 100;
-                        double bfrMem = newProc.getResidentSetSize() / 1024.0 / 1024.0;
-
-                        Map<String, Object> bfrMap = new HashMap<>();
-                        bfrMap.put("BFR_CPU", String.format("%.0f", bfrCpu));
-                        bfrMap.put("BFR_Memory", String.format("%.0f", bfrMem));
-                        lastBfrData = bfrMap;
-                    }
-                }
-            } catch (Exception e) {
-                log.error("采集 BFR 程序资源失败", e);
-                Map<String, Object> fallback = new HashMap<>();
-                fallback.put("BFR_CPU", "0");
-                fallback.put("BFR_Memory", "0");
-                lastBfrData = fallback;
-            }
-        }, 0, 2, TimeUnit.SECONDS);
+    private void send(WebSocketSession session, Map<String, Object> msg) {
+        try {
+            session.sendMessage(new TextMessage(mapper.writeValueAsString(msg)));
+        } catch (Exception e) {
+            log.error("发送失败", e);
+        }
     }
 
-    private void startProcessSampler() {
+    private void schedule(final Runnable r, int delay, int period) {
         scheduler.scheduleAtFixedRate(() -> {
             try {
-                List<Map<String, Object>> sample = processService.getProcessCpuAndMemory();
-                if (sample != null) {
-                    cachedProcessList = sample;
-                }
+                r.run();
             } catch (Exception e) {
-                log.error("进程采样失败", e);
+                log.error("定时任务异常", e);
             }
-        }, 0, 2, TimeUnit.SECONDS);
+        }, delay, period, TimeUnit.SECONDS);
+
+    }
+
+    private Map<String, Object> message(String type, String msg) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("type", type);
+        map.put("message", msg);
+        return map;
+    }
+
+    private Map<String, Object> message(String type, String msg, Object data) {
+        Map<String, Object> map = message(type, msg);
+        map.put("data", data);
+        return map;
     }
 }
-
