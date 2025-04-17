@@ -72,7 +72,7 @@ public class SystemWebSocketHandler extends TextWebSocketHandler {
                     log.error("发送 error 消息失败", e);
                 }
             }
-        }, 5, TimeUnit.SECONDS);
+        }, 3, TimeUnit.SECONDS);
 
         if (sessions.size() == 1) {
             startBroadcasting();
@@ -132,7 +132,7 @@ public class SystemWebSocketHandler extends TextWebSocketHandler {
                     log.error("Heartbeat 发送失败", e);
                 }
             }
-        }, 0, 5, TimeUnit.SECONDS);
+        }, 0, 3, TimeUnit.SECONDS);
     }
 
     private void startBroadcasting() {
