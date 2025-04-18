@@ -25,7 +25,7 @@ public class CpuLoadMetricsService {
 
         long[] prevTicks = processor.getSystemCpuLoadTicks();
         try {
-            Thread.sleep(1500); // 等 1 秒获取平均负载
+            Thread.sleep(1000); // 等 1 秒获取平均负载
         } catch (InterruptedException e) {
             e.printStackTrace();
         }

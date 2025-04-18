@@ -966,3 +966,29 @@ Identify and stop the process that's listening on port 9090 or configure this ap
 2025-04-18 02:53:33.519  INFO 66300 --- [pool-2-thread-2] o.a.o.service.alert.CpuAlertService      : 当前 CPU 正常，使用率：2.69%
 2025-04-18 02:53:37.570  INFO 66300 --- [pool-2-thread-2] o.a.o.service.alert.CpuAlertService      : 当前 CPU 正常，使用率：6.06%
 2025-04-18 02:53:41.607  INFO 66300 --- [pool-2-thread-2] o.a.o.service.alert.CpuAlertService      : 当前 CPU 正常，使用率：5.46%
+2025-04-18 10:04:19.064  INFO 34484 --- [main] o.a.o.OShiMonitorAppApplication          : Starting OShiMonitorAppApplication using Java 17.0.10 on PonyWhite with PID 34484 (D:\JAVA\oshi-monitor-app\target\classes started by Pony White in D:\JAVA\oshi-monitor-app)
+2025-04-18 10:04:19.067  INFO 34484 --- [main] o.a.o.OShiMonitorAppApplication          : No active profile set, falling back to 1 default profile: "default"
+2025-04-18 10:04:19.723  INFO 34484 --- [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port(s): 9091 (http)
+2025-04-18 10:04:19.729  INFO 34484 --- [main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2025-04-18 10:04:19.729  INFO 34484 --- [main] org.apache.catalina.core.StandardEngine  : Starting Servlet engine: [Apache Tomcat/9.0.83]
+2025-04-18 10:04:19.789  INFO 34484 --- [main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2025-04-18 10:04:19.789  INFO 34484 --- [main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 679 ms
+2025-04-18 10:04:20.634  INFO 34484 --- [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port(s): 9091 (http) with context path ''
+2025-04-18 10:04:20.643  INFO 34484 --- [main] o.a.o.OShiMonitorAppApplication          : Started OShiMonitorAppApplication in 1.909 seconds (JVM running for 2.529)
+2025-04-18 10:04:40.103  INFO 34484 --- [http-nio-9091-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2025-04-18 10:04:40.103  INFO 34484 --- [http-nio-9091-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2025-04-18 10:04:40.104  INFO 34484 --- [http-nio-9091-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
+2025-04-18 10:04:40.123 ERROR 34484 --- [http-nio-9091-exec-1] o.a.o.controller.ScriptExecController    : 脚本文件不存在：./BSMesWare/NET5.0/BFR_V3.0_NET5.0/stopdotnet.sh
+2025-04-18 10:13:53.060  INFO 9120 --- [main] o.a.o.OShiMonitorAppApplication          : Starting OShiMonitorAppApplication using Java 17.0.10 on PonyWhite with PID 9120 (D:\JAVA\oshi-monitor-app\target\classes started by Pony White in D:\JAVA\oshi-monitor-app)
+2025-04-18 10:13:53.065  INFO 9120 --- [main] o.a.o.OShiMonitorAppApplication          : No active profile set, falling back to 1 default profile: "default"
+2025-04-18 10:13:53.634  INFO 9120 --- [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port(s): 9091 (http)
+2025-04-18 10:13:53.641  INFO 9120 --- [main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2025-04-18 10:13:53.641  INFO 9120 --- [main] org.apache.catalina.core.StandardEngine  : Starting Servlet engine: [Apache Tomcat/9.0.83]
+2025-04-18 10:13:53.696  INFO 9120 --- [main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2025-04-18 10:13:53.696  INFO 9120 --- [main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 596 ms
+2025-04-18 10:13:54.088  INFO 9120 --- [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port(s): 9091 (http) with context path ''
+2025-04-18 10:13:54.096  INFO 9120 --- [main] o.a.o.OShiMonitorAppApplication          : Started OShiMonitorAppApplication in 1.291 seconds (JVM running for 1.772)
+2025-04-18 10:14:11.574  INFO 9120 --- [http-nio-9091-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2025-04-18 10:14:11.574  INFO 9120 --- [http-nio-9091-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2025-04-18 10:14:11.574  INFO 9120 --- [http-nio-9091-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 0 ms
+2025-04-18 10:14:11.595 ERROR 9120 --- [http-nio-9091-exec-1] o.a.o.controller.ScriptExecController    : 脚本文件不存在：./BSMesWare/NET5.0/BFR_V3.0_NET5.0/start.sh
